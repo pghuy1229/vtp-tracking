@@ -87,7 +87,7 @@ def solve_recaptcha() -> str:
     raise TimeoutError("CapMonster timeout khi chờ giải Captcha.")
 
 def fetch_order_info(order_code: str) -> dict:
-    """Gửi request tra cứu đến ViettelPost thông qua Proxy DataImpulse để tránh WAF 403"""
+    """Gửi request tra cứu đến ViettelPost thông qua Proxy DataImpulse (hoặc fallback nếu nghẽn)"""
     token = solve_recaptcha()
     headers = {
         "Accept": "application/json, text/plain, */*",
@@ -97,7 +97,13 @@ def fetch_order_info(order_code: str) -> dict:
         "Referer": "https://viettelpost.vn/"
     }
     payload = {"captcha": token, "orders": order_code.strip()}
-    res = requests.post(TRACKING_API_URL, json=payload, headers=headers, proxies=PROXIES, timeout=25).json()
+    
+    # Thử qua Proxy với timeout 45s, nếu mạng proxy chập chờn thì thử trực tiếp
+    try:
+        res = requests.post(TRACKING_API_URL, json=payload, headers=headers, proxies=PROXIES, timeout=45).json()
+    except (requests.exceptions.Timeout, requests.exceptions.ConnectionError):
+        res = requests.post(TRACKING_API_URL, json=payload, headers=headers, timeout=30).json()
+
     if res.get("data") and len(res["data"]) > 0:
         return res["data"][0]
     return None

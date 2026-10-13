@@ -246,7 +246,7 @@ async def add_orders(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if data:
             curr_status, _, _, _, is_done = get_routing_info(data)
             curr_time = data.get("NGAY_TRANGTHAI", "")
-            await wait_msg.edit_text(format_order_msg(data, false, note), parse_mode="Markdown")
+            await wait_msg.edit_text(format_order_msg(data, False, note), parse_mode="Markdown")
 
             if is_done:
                 return

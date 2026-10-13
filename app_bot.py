@@ -2,9 +2,26 @@ import json
 import os
 import re
 import time
+import threading
+from http.server import HTTPServer, BaseHTTPRequestHandler
 import requests
 from telegram import Update, BotCommand
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
+
+class HealthCheckHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header("Content-type", "text/plain")
+        self.end_headers()
+        self.wfile.write(b"OK - Bot ViettelPost is running")
+
+    def log_message(self, format, *args):
+        pass  # Không in log rác
+
+def run_health_server():
+    port = int(os.environ.get("PORT", 10000))
+    server = HTTPServer(("0.0.0.0", port), HealthCheckHandler)
+    server.serve_forever()
 
 # ================= CONFIG =================
 TELEGRAM_BOT_TOKEN = "8793779707:AAHcoKeeDN_CGc6XUbuWSc7We-SqyxnUtG8"
@@ -322,6 +339,12 @@ async def hourly_tracking_job(context: ContextTypes.DEFAULT_TYPE):
                 print(f"Error checking {code}: {e}")
 
 def main():
+    # Khởi động web server mini để Render detect port mở (tránh Deploy Failed trên Render Free Web Service)
+    t = threading.Thread(target=run_health_server, daemon=True)
+    t.start()
+    port = os.environ.get("PORT", "10000")
+    print(f"[+] Health-check web server dang lang nghe tai port {port}...")
+
     app = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).post_init(post_init).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("add", add_orders))
